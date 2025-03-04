@@ -1,0 +1,11 @@
+Olá {{ user.username }},
+
+Para recuperar sua senha clique no link à seguir:
+
+{{ url_for('recuperar_senha', token=token, _external=True)}}
+
+Se você NÃO solicitou uma recuperação de senha, por favor, simplesmente ignore essa mensagem.
+
+Sinceramente,
+
+Equipe Micro Blog

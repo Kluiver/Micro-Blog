@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+<!-- Importando o macro do bootsrap -->
+{% import 'bootstrap_wtf.html' as wtf %}
+
+{% block content %}
+
+    <h1>Login</h1>
+
+    {{ wtf.quick_form(form) }}
+
+    <p>Novo usuário? <a href="{{ url_for('cadastro') }}">Clique para se cadastrar!</a></p>
+    <p>
+        Esqueceu sua senha?
+        <a href="{{ url_for('solicitar_recuperar_senha')}}">Clique para recuperá-la</a>
+    </p>
+
+{% endblock %}

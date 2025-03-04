@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% import 'bootstrap_wtf.html' as wtf %}
+
+{% block content %}
+
+    <h1>Olá {{ current_user.username }}!</h1>
+
+    {% if form %}
+    
+    {{ wtf.quick_form(form) }}
+
+    <hr>
+
+    {% endif %}
+
+    </form>
+
+    {% for post in posts %}
+        {% include '_post.html' %}
+    {% endfor %}
+
+
+    <nav aria-label="Post navigation">
+        <ul class="pagination">
+            <li class="page-item{% if not anterior_url %} disabled {% endif %}">
+                <a class="page-link" href="{{ anterior_url }}">
+                    <span aria-hidden="true">&larr;</span> Mais Recentes
+                </a>
+            </li>
+            <li class="page-item{% if not proxima_url %} disabled {% endif %}">
+                <a class="page-link" href="{{ proxima_url }}">
+                    Mais Antigos <span aria-hidden="true">&rarr;</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+
+{% endblock %}

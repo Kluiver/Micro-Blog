@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% import 'bootstrap_wtf.html' as wtf %}
+
+{% block content %}
+    <table>
+        <tr valign="top">
+            <td><img src="{{ user.avatar(128) }}"></td>
+            <td>
+                <h1>Usuário: {{user.username}}</h1>
+                {% if user.sobre_mim %} <p> {{ user.sobre_mim }}</p> {% endif %}
+                {% if user.visto_ultimo %} <p>Visto por último: {{ moment(user.visto_ultimo).fromNow() }} </p> {% endif %}
+                
+                <p>{{ user.quantidade_seguidores() }} Seguidores,  {{ user.quantidade_seguindo() }} seguindo.</p>
+                
+                {% if user == current_user %}
+                <p><a href="{{ url_for('editar_perfil' )}}">Editar Perfil</a></p>
+
+                {% elif not current_user.esta_seguindo(user) %}
+
+                <p>
+
+                    
+
+                    <form action="{{ url_for('seguir', username=user.username) }}" method="post">
+                        {{ form.hidden_tag() }}
+                        {{ form.btn_submit(value='Seguir', class='btn btn-primary') }}
+                    </form>
+
+                </p>
+
+                {% else %}
+
+                <p>
+
+                    <form action="{{ url_for('deixar_de_seguir', username=user.username) }}" method="post">
+                        {{ form.hidden_tag() }}
+                        {{ form.btn_submit(value='Deixar de Seguir', class='btn btn-primary') }}
+                    </form>
+
+                </p>
+
+                {% endif %}
+            </td>
+        </tr>
+    </table>
+    
+    <hr>
+    {% for post in posts %}
+        {% include '_post.html' %}
+    {% endfor %}
+
+    <nav aria-label="Post navigation">
+        <ul class="pagination">
+            <li class="page-item{% if not anterior_url %} disabled {% endif %}">
+                <a class="page-link" href="{{ anterior_url }}">
+                    <span aria-hidden="true">&larr;</span> Mais Recentes
+                </a>
+            </li>
+            <li class="page-item{% if not proxima_url %} disabled {% endif %}">
+                <a class="page-link" href="{{ proxima_url }}">
+                    Mais Antigos <span aria-hidden="true">&rarr;</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+{% endblock %}
