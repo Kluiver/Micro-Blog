@@ -1,13 +1,13 @@
 <table class="table table-hover">
     <tr>
         <td width="70px">
-            <a href="{{ url_for('perfil', username=post.autor.username) }}">
+            <a href="{{ url_for('main.perfil', username=post.autor.username) }}">
                 <img src="{{ post.autor.avatar(70) }}" alt="">
                 
             </a>
         </td>
         <td>
-            <a href="{{ url_for('perfil', username=post.autor.username) }}">
+            <a href="{{ url_for('main.perfil', username=post.autor.username) }}">
                 {{ post.autor.username }}
             </a>
             disse {{ moment(post.tempo).fromNow() }}: 

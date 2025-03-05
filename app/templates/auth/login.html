@@ -8,10 +8,10 @@
 
     {{ wtf.quick_form(form) }}
 
-    <p>Novo usuário? <a href="{{ url_for('cadastro') }}">Clique para se cadastrar!</a></p>
+    <p>Novo usuário? <a href="{{ url_for('auth.cadastro') }}">Clique para se cadastrar!</a></p>
     <p>
         Esqueceu sua senha?
-        <a href="{{ url_for('solicitar_recuperar_senha')}}">Clique para recuperá-la</a>
+        <a href="{{ url_for('auth.solicitar_recuperar_senha')}}">Clique para recuperá-la</a>
     </p>
 
 {% endblock %}

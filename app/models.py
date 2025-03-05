@@ -1,4 +1,5 @@
-from app import db, login, app
+from app import db, login
+from flask import current_app
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 from typing import Optional
@@ -68,12 +69,12 @@ class User(UserMixin, db.Model):
     def get_token_recuperar_senha(self, expira_em=600):
         return jwt.encode(
             {'recuperar_senha': self.id, 'exp': time() + expira_em},
-            app.config['SECRET_KEY'], algorithm='HS256')
+            current_app.config['SECRET_KEY'], algorithm='HS256')
     
     # Função para gerar um avatar
     def avatar(self, tamanho):
         digest = md5(self.email.lower().encode('utf-8')).hexdigest()
-        return f'https://www.gravatar.com/avatar/{digest}?s={tamanho}&d=identicon'
+        return f'https://www.gravatar.com/avatar/{digest}?d=identicon&s={tamanho}'
     
     # Função para seguir outro usuário
     def seguir(self, user):
@@ -123,7 +124,7 @@ class User(UserMixin, db.Model):
     @staticmethod
     def verificar_token_senha(token):
         try:
-            id = jwt.decode(token, app.config['SECRET_KEY'],
+            id = jwt.decode(token, current_app.config['SECRET_KEY'],
                             algorithms=['HS256'])['recuperar_senha']
         except:
             return

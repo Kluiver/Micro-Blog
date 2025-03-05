@@ -12,12 +12,12 @@
     <p>
         Para restaurar sua senha
 
-        <a href="{{ url_for('recuperar_senha', token=token, _external=True) }}">
+        <a href="{{ url_for('auth.recuperar_senha', token=token, _external=True) }}">
             Clique aqui
         </a>
     </p>
     <p>Alternativamente, você pode colar o seguinte link na barra de pesquisa do seu navegador:</p>
-    <p>{{ url_for('recuperar_senha', token=token, _external=True) }}</p>
+    <p>{{ url_for('auth.recuperar_senha', token=token, _external=True) }}</p>
     <p>Se você não solicitou uma recuperação de senha, simplesmente ignore essa mensagem.</p>
     <p>Sinceramente,</p>
     <p>Equipe Micro Blog</p>

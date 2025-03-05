@@ -1,15 +1,17 @@
-import os
-os.environ['DATABASE_URL'] = 'sqlite://' # noqa
-
 from datetime import datetime, timezone, timedelta
 import unittest
-from app import app, db # noqa
+from app import criar_app, db
 from app.models import User, Post
+from config import Config
 
+class TestConfig(Config):
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI ='sqlite:///'
 
 class UserModelCase(unittest.TestCase):
     def setUp(self):
-        self.app_context = app.app_context()
+        self.app = criar_app(TestConfig)
+        self.app_context = self.app.app_context()
         self.app_context.push()
         db.create_all()
 
@@ -36,26 +38,26 @@ class UserModelCase(unittest.TestCase):
         db.session.add(u1)
         db.session.add(u2)
         db.session.commit()
-        following = db.session.scalars(u1.following.select()).all()
-        followers = db.session.scalars(u2.followers.select()).all()
+        following = db.session.scalars(u1.seguindo.select()).all()
+        followers = db.session.scalars(u2.seguidores.select()).all()
         self.assertEqual(following, [])
         self.assertEqual(followers, [])
 
-        u1.follow(u2)
+        u1.seguir(u2)
         db.session.commit()
-        self.assertTrue(u1.is_following(u2))
-        self.assertEqual(u1.following_count(), 1)
-        self.assertEqual(u2.followers_count(), 1)
-        u1_following = db.session.scalars(u1.following.select()).all()
-        u2_followers = db.session.scalars(u2.followers.select()).all()
+        self.assertTrue(u1.esta_seguindo(u2))
+        self.assertEqual(u1.quantidade_seguindo(), 1)
+        self.assertEqual(u2.quantidade_seguidores(), 1)
+        u1_following = db.session.scalars(u1.seguindo.select()).all()
+        u2_followers = db.session.scalars(u2.seguidores.select()).all()
         self.assertEqual(u1_following[0].username, 'susan')
         self.assertEqual(u2_followers[0].username, 'john')
 
-        u1.unfollow(u2)
+        u1.deixar_de_seguir(u2)
         db.session.commit()
-        self.assertFalse(u1.is_following(u2))
-        self.assertEqual(u1.following_count(), 0)
-        self.assertEqual(u2.followers_count(), 0)
+        self.assertFalse(u1.esta_seguindo(u2))
+        self.assertEqual(u1.quantidade_seguindo(), 0)
+        self.assertEqual(u2.quantidade_seguidores(), 0)
 
     def test_follow_posts(self):
         # create four users
@@ -67,29 +69,29 @@ class UserModelCase(unittest.TestCase):
 
         # create four posts
         now = datetime.now(timezone.utc)
-        p1 = Post(body="post from john", author=u1,
-                  timestamp=now + timedelta(seconds=1))
-        p2 = Post(body="post from susan", author=u2,
-                  timestamp=now + timedelta(seconds=4))
-        p3 = Post(body="post from mary", author=u3,
-                  timestamp=now + timedelta(seconds=3))
-        p4 = Post(body="post from david", author=u4,
-                  timestamp=now + timedelta(seconds=2))
+        p1 = Post(corpo="post from john", autor=u1,
+                  tempo=now + timedelta(seconds=1))
+        p2 = Post(corpo="post from susan", autor=u2,
+                  tempo=now + timedelta(seconds=4))
+        p3 = Post(corpo="post from mary", autor=u3,
+                  tempo=now + timedelta(seconds=3))
+        p4 = Post(corpo="post from david", autor=u4,
+                  tempo=now + timedelta(seconds=2))
         db.session.add_all([p1, p2, p3, p4])
         db.session.commit()
 
         # setup the followers
-        u1.follow(u2)  # john follows susan
-        u1.follow(u4)  # john follows david
-        u2.follow(u3)  # susan follows mary
-        u3.follow(u4)  # mary follows david
+        u1.seguir(u2)  # john follows susan
+        u1.seguir(u4)  # john follows david
+        u2.seguir(u3)  # susan follows mary
+        u3.seguir(u4)  # mary follows david
         db.session.commit()
 
         # check the following posts of each user
-        f1 = db.session.scalars(u1.following_posts()).all()
-        f2 = db.session.scalars(u2.following_posts()).all()
-        f3 = db.session.scalars(u3.following_posts()).all()
-        f4 = db.session.scalars(u4.following_posts()).all()
+        f1 = db.session.scalars(u1.posts_seguidos()).all()
+        f2 = db.session.scalars(u2.posts_seguidos()).all()
+        f3 = db.session.scalars(u3.posts_seguidos()).all()
+        f4 = db.session.scalars(u4.posts_seguidos()).all()
         self.assertEqual(f1, [p2, p4, p1])
         self.assertEqual(f2, [p2, p3])
         self.assertEqual(f3, [p3, p4])
