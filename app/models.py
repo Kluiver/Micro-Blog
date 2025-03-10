@@ -9,6 +9,8 @@ from flask_login import UserMixin
 from hashlib import md5
 from time import time
 import jwt
+import json
+
 
 
 
@@ -37,6 +39,22 @@ class User(UserMixin, db.Model):
     posts: so.WriteOnlyMapped['Post'] = so.relationship(back_populates='autor')
     sobre_mim: so.Mapped[Optional[str]] = so.mapped_column(sa.String(140))
     visto_ultimo: so.Mapped[Optional[datetime]] = so.mapped_column(default = lambda: datetime.now(timezone.utc))
+    # Relacionando a tabeba usuário com a tabela mensagem
+    tempo_ultima_mensagem_lida: so.Mapped[Optional[datetime]]
+    mensagens_enviadas: so.WriteOnlyMapped['Mensagem'] = so.relationship(
+        foreign_keys='Mensagem.remetente_id', back_populates='autor')
+    mensagens_recebidas: so.WriteOnlyMapped['Mensagem'] = so.relationship(
+        foreign_keys='Mensagem.destinatario_id', back_populates='destinatario')
+    # Relacionando tabela usuário com a tabela de notificação
+    notificacoes: so.WriteOnlyMapped['Notificacao'] = so.relationship(back_populates='user')
+    
+    # Função que verifica quantidade de mensagens não lidas
+    def qtd_msg_nao_lidas(self):
+        tempo_ultima_lida = self.tempo_ultima_mensagem_lida or datetime(1900, 1, 1)
+        busca = sa.select(Mensagem).where(Mensagem.destinatario == self,
+                                          Mensagem.tempo > tempo_ultima_lida)
+        return db.session.scalar(sa.select(sa.func.count()).select_from(busca.subquery()))
+
 
     # Relacionando a tabela de seguidores e seguindo
     seguindo: so.WriteOnlyMapped['User'] = so.relationship(
@@ -130,6 +148,15 @@ class User(UserMixin, db.Model):
             return
         return db.session.get(User, id)
     
+    # Função para adicionar notificação
+    def add_notificacao(self, nome, data):
+        db.session.execute(self.notificacoes.delete().where(
+            Notificacao.nome == nome))
+        
+        n = Notificacao(nome=nome, payload_json=json.dumps(data), user=self)
+        db.session.add(n)
+        return n
+    
 
 # Classe para posts
 class Post(db.Model):
@@ -146,6 +173,35 @@ class Post(db.Model):
     def __repr__(self):
         return f'<Post {self.corpo}>'
     
+# Classe para mensagens diretas
+class Mensagem(db.Model):
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    remetente_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(User.id), index=True)
+    destinatario_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(User.id), index=True)
+    corpo: so.Mapped[str] = so.mapped_column(sa.String(140))
+    tempo: so.Mapped[datetime] = so.mapped_column(
+        index=True, default=lambda : datetime.now(timezone.utc))
+    # Vinculando o usuário que enviou a mensagem
+    autor: so.Mapped[User] = so.relationship(foreign_keys='Mensagem.remetente_id', back_populates='mensagens_enviadas')
+    # Vinculando o usuário que recebeu a mensagem
+    destinatario: so.Mapped[User] = so.relationship(foreign_keys='Mensagem.destinatario_id', back_populates='mensagens_recebidas')
+
+    def __repr__(self):
+        return f'<Mensagem {self.corpo}>'
+
+
+# Classe de notificação
+class Notificacao(db.Model):
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    nome: so.Mapped[str] = so.mapped_column(sa.String(128), index=True)
+    user_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(User.id), index=True)
     
+    tempo: so.Mapped[float] = so.mapped_column(index=True, default=time)
+    payload_json: so.Mapped[str] = so.mapped_column(sa.Text)
+
+    user: so.Mapped[User] = so.relationship(back_populates='notificacoes')
+
+    def get_data(self):
+        return json.loads(str(self.payload_json))
 
 

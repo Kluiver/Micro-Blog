@@ -36,3 +36,7 @@ class PostForm(FlaskForm):
     post = TextAreaField('Diga alguma coisa', validators=[DataRequired('Campo obrigatório'), Length(min=1, max=140, message='Tamanho de texto inválido')])
     btn_submit = SubmitField('Postar')
     
+# Formulário para enviar mensagem
+class MensagemForm(FlaskForm):
+    mensagem = TextAreaField('Mensagem', validators=[DataRequired(), Length(min=0, max=140)])
+    btn_submit = SubmitField('Enviar')

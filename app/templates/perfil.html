@@ -11,6 +11,17 @@
                 {% if user.visto_ultimo %} <p>Visto por último: {{ moment(user.visto_ultimo).fromNow() }} </p> {% endif %}
                 
                 <p>{{ user.quantidade_seguidores() }} Seguidores,  {{ user.quantidade_seguindo() }} seguindo.</p>
+
+                {% if user != current_user %}
+
+                <p>
+                    <a href="{{ url_for('main.enviar_mensagem', destinatario=user.username) }}">
+                        Enviar Mensagem privada
+                    </a>
+
+                </p>
+
+                {% endif %}
                 
                 {% if user == current_user %}
                 <p><a href="{{ url_for('main.editar_perfil' )}}">Editar Perfil</a></p>

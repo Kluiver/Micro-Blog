@@ -20,6 +20,7 @@ class Config:
     ADMINS = ['your-email@example.com']
 
     # Paginação dos posts
-    POSTS_PER_PAGE = 10
+    POSTS_PER_PAGE = 1
+
 
     

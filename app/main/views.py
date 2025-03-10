@@ -1,8 +1,8 @@
 from app import db
 from flask import render_template, redirect, flash, url_for, request, current_app
-from app.main.forms import EditarPerfilForm, VazioForm, PostForm
+from app.main.forms import EditarPerfilForm, VazioForm, PostForm, MensagemForm
 from flask_login import current_user, login_required
-from app.models import User, Post
+from app.models import User, Post, Mensagem, Notificacao
 import sqlalchemy as sa
 from datetime import datetime, timezone
 from app.main import bp
@@ -156,8 +156,57 @@ def explorar():
     
     return render_template('index.html', titulo='Explorar', posts=posts, anterior_url=anterior_url, proxima_url=proxima_url)
 
-        
-@bp.route('/cause_500')
-def cause_error():
-    1 / 0  # Isso causará um erro 500 de divisão por zero
 
+# Rota para enviar mensagens
+@bp.route('/enviar_mensagem/<destinatario>', methods=['GET', 'POST'])
+@login_required
+def enviar_mensagem(destinatario):
+    user = db.first_or_404(sa.select(User).where(User.username == destinatario))
+    form = MensagemForm()
+
+    if form.validate_on_submit():
+        msg = Mensagem(autor=current_user, destinatario=user, corpo=form.mensagem.data)
+        user.add_notificacao('qtd_msg_nao_lidas',
+                             user.qtd_msg_nao_lidas())
+        db.session.add(msg)
+        db.session.commit()
+        flash('Mensagem enviada!')
+        return redirect(url_for('main.perfil', username=destinatario))
+    return render_template('enviar_mensagem.html', titulo='Enviar Mensagem', form=form, destinatario=destinatario)
+
+
+# Rota para visualizar mensagens recebidas
+@bp.route('/mensagens/')
+@login_required
+def mensagens():
+    current_user.tempo_ultima_mensagem_lida = datetime.now(timezone.utc)
+    # Zerando o contador de notificação quando abro a aba de mensagens
+    current_user.add_notificacao('qtd_msg_nao_lida', 0)
+    db.session.commit()
+    
+    # Paginação
+    page = request.args.get('page', 1, type=int)
+    busca = current_user.mensagens_recebidas.select().order_by(
+        Mensagem.tempo.desc())
+    mensagens = db.paginate(busca, page=page,
+                            per_page=current_app.config['POSTS_PER_PAGE'], error_out=False)
+    
+    proxima_url = url_for('main.mensagens', page=mensagens.next_num) \
+        if mensagens.has_next else None
+    anterior_url = url_for('main.mensagens', page=mensagens.prev_num) \
+        if mensagens.has_prev else None
+    return render_template('mensagens.html', titulo='Mensagens', mensagens=mensagens.items, proxima_url=proxima_url, anterior_url=anterior_url)
+
+# Rota para notifição de mensagens
+@bp.route('/notificacoes')
+@login_required
+def notificacoes():
+    since = request.args.get('since', 0.0, type=float)
+    busca = current_user.notificacoes.select().where(
+        Notificacao.tempo > since).order_by(Notificacao.tempo.asc())
+    notificacoes = db.session.scalars(busca)
+    return [{
+        'nome': n.nome,
+        'data': n.get_data(),
+        'tempo': n.tempo
+    } for n in notificacoes]

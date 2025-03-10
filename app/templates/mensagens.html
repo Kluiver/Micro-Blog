@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+    <h1>Mensagens</h1>
+
+    {% for post in mensagens %}
+
+        {% include '_post.html' %}
+
+    {% endfor %}
+
+    <nav aria-label="Post navigation">
+        <ul class="pagination">
+            <li class="previous{% if not anterior_url %} disabled {% endif %}">
+                <a class="page-link" href="{{ anterior_url }}">
+                    <span aria-hidden="true">&larr;</span> Mensagens mais novas
+                </a>
+            </li>
+            <li class="next{% if not proxima_url %} disabled {% endif %}">
+                <a class="page-link" href="{{ proxima_url }}">
+                    Mensagens mais antigas <span aria-hidden="true">&rarr;</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+{% endblock %}

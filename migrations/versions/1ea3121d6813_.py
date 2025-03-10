@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: f1878b41135f
-Revises: b84e148327bb
-Create Date: 2025-02-28 06:11:07.488427
+Revision ID: 1ea3121d6813
+Revises: 
+Create Date: 2025-03-08 11:34:34.385427
 
 """
 from alembic import op
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'f1878b41135f'
-down_revision = 'b84e148327bb'
+revision = '1ea3121d6813'
+down_revision = None
 branch_labels = None
 depends_on = None
 
@@ -25,11 +25,41 @@ def upgrade():
     sa.Column('senha_hash', sa.String(length=256), nullable=True),
     sa.Column('sobre_mim', sa.String(length=140), nullable=True),
     sa.Column('visto_ultimo', sa.DateTime(), nullable=True),
+    sa.Column('tempo_ultima_mensagem_lida', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
     with op.batch_alter_table('user', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_user_email'), ['email'], unique=True)
         batch_op.create_index(batch_op.f('ix_user_username'), ['username'], unique=True)
+
+    op.create_table('mensagem',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('remetente_id', sa.Integer(), nullable=False),
+    sa.Column('destinatario_id', sa.Integer(), nullable=False),
+    sa.Column('corpo', sa.String(length=140), nullable=False),
+    sa.Column('tempo', sa.DateTime(), nullable=False),
+    sa.ForeignKeyConstraint(['destinatario_id'], ['user.id'], ),
+    sa.ForeignKeyConstraint(['remetente_id'], ['user.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    with op.batch_alter_table('mensagem', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_mensagem_destinatario_id'), ['destinatario_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_mensagem_remetente_id'), ['remetente_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_mensagem_tempo'), ['tempo'], unique=False)
+
+    op.create_table('notificacao',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('nome', sa.String(length=128), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('tempo', sa.Float(), nullable=False),
+    sa.Column('payload_json', sa.Text(), nullable=False),
+    sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    with op.batch_alter_table('notificacao', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_notificacao_nome'), ['nome'], unique=False)
+        batch_op.create_index(batch_op.f('ix_notificacao_tempo'), ['tempo'], unique=False)
+        batch_op.create_index(batch_op.f('ix_notificacao_user_id'), ['user_id'], unique=False)
 
     op.create_table('post',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -61,6 +91,18 @@ def downgrade():
         batch_op.drop_index(batch_op.f('ix_post_tempo'))
 
     op.drop_table('post')
+    with op.batch_alter_table('notificacao', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_notificacao_user_id'))
+        batch_op.drop_index(batch_op.f('ix_notificacao_tempo'))
+        batch_op.drop_index(batch_op.f('ix_notificacao_nome'))
+
+    op.drop_table('notificacao')
+    with op.batch_alter_table('mensagem', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_mensagem_tempo'))
+        batch_op.drop_index(batch_op.f('ix_mensagem_remetente_id'))
+        batch_op.drop_index(batch_op.f('ix_mensagem_destinatario_id'))
+
+    op.drop_table('mensagem')
     with op.batch_alter_table('user', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_user_username'))
         batch_op.drop_index(batch_op.f('ix_user_email'))

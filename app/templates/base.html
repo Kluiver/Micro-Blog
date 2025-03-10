@@ -48,6 +48,16 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('main.perfil', username=current_user.username)}}">Perfil</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" aria-current="page" href="{{ url_for('main.mensagens' )}}">Mensagens
+                            {% set qtd_msg_nao_lidas = current_user.qtd_msg_nao_lidas() %}
+                            <span id="contador_mensagem" class="badge text-bg-danger" 
+                            style="visibility: {% if qtd_msg_nao_lidas %} visible 
+                                               {% else %} hidden {% endif%};">
+                                {{ qtd_msg_nao_lidas }}
+                            </span>
+                        </a>
+                    </li>
 
                     <li class="nav-item">                
                         <a class="nav-link" href="{{url_for('auth.logout')}}">Logout</a>
@@ -79,6 +89,31 @@
             {{ moment.include_moment()}}
             {{ moment.locale(auto_detect=True) }}
 
+            <script>
+                function set_contador_mensagem(n) {
+                    const contador = document.getElementById('contador_mensagem');
+                    contador.innerText = n;
+                    contador.style.visibility = n ? 'visible' : 'hidden';
+                }
+            
+
+            {% if current_user.is_authenticated %}
+
+            function inicializar_notificacoes() {
+                let since = 0;
+                setInterval(async function() {
+                    const resposta = await fetch('{{ url_for('main.notificacoes') }}?since=' + since);
+                    const notificacoes = await resposta.json();
+                    for (let i=0; i < notificacoes.lenght; i++) {
+                        if (notificacoes[i].nome == 'qtd_msg_nao_lidas')
+                            set_contator_mensagem(notificacoes[i].data);
+                        since = notificacoes[i].tempo;
+                    }
+                }, 10000)
+            }
+            document.addEventListener('DOMContentLoaded', inicializar_notificacoes);
+            {% endif %}
+            </script>
         </div>
         
     </body>
