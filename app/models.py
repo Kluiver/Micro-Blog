@@ -1,17 +1,41 @@
 from app import db, login
-from flask import current_app
+from flask import current_app, url_for
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 from typing import Optional
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from hashlib import md5
 from time import time
 import jwt
 import json
+import secrets
 
-
+class PagimatedAPIMixin(object):
+    @staticmethod
+    def to_colection_dict(busca, page, per_page, endpoint, **kwargs):
+        resources = db.paginate(busca, page=page, per_page=per_page,
+                                error_out=False)
+        
+        data = {
+            'items': [item.to_dict() for item in resources.items],
+            '_meta': {
+                'page': page,
+                'per_page': per_page,
+                'total_pages': resources.pages,
+                'total_items': resources.total,
+                '_links': {
+                   'self': url_for(endpoint, page=page, per_page=per_page,
+                                  **kwargs),
+                    'next': url_for(endpoint, page=page + 1,
+                                  per_page=per_page, **kwargs) if resources.has_next else None,
+                    'prev': url_for(endpoint, page=page - 1,
+                                  per_page=per_page, **kwargs) if resources.has_prev else None
+                }
+            }
+        }
+        return data
 
 
 # Definindo a função que será chamada quando um usuário é carregado
@@ -29,7 +53,7 @@ seguidores = sa.Table(
 
 
 # criando a classe de usuário
-class User(UserMixin, db.Model):
+class User(PagimatedAPIMixin, UserMixin, db.Model):
     # Definindo os campos para a tabela USER do banco de dados
     id: so.Mapped[int] = so.mapped_column(primary_key=True) # ID será o campo primário de todas as tabelas
     username: so.Mapped[str] = so.mapped_column(sa.String(64), index=True, unique=True) # Defino que o usuário será idexável e é único
@@ -47,6 +71,32 @@ class User(UserMixin, db.Model):
         foreign_keys='Mensagem.destinatario_id', back_populates='destinatario')
     # Relacionando tabela usuário com a tabela de notificação
     notificacoes: so.WriteOnlyMapped['Notificacao'] = so.relationship(back_populates='user')
+    token: so.Mapped[Optional[str]] = so.mapped_column(sa.String(32), index=True, unique=True)
+    token_expiration: so.Mapped[Optional[datetime]]
+
+    # Função para dar um token de autenticação para o usuário
+    def get_token(self, expires_in=3600):
+        now = datetime.now(timezone.utc)
+        if self.token and self.token_expiration.replace(
+                tzinfo=timezone.utc) > now + timedelta(seconds=60):
+            return self.token
+        self.token = secrets.token_hex(16)
+        self.token_expiration = now + timedelta(seconds=expires_in)
+        db.session.add(self)
+        return self.token
+    
+    # Função para remover o o token de autentticação
+    def revoke_token(self):
+        self.token_expiration = datetime.now(timezone.utc) - timedelta(seconds=1)
+
+    # Metodo statico para checar o token
+    @staticmethod
+    def check_token(token):
+        user = db.session.scalar(sa.select(User).where(User.token == token))
+        if user is None or user.token_expiration.replace(
+                tzinfo=timezone.utc) < datetime.now(timezone.utc):
+            return None
+        return user
     
     # Função que verifica quantidade de mensagens não lidas
     def qtd_msg_nao_lidas(self):
@@ -157,6 +207,50 @@ class User(UserMixin, db.Model):
         db.session.add(n)
         return n
     
+    # Função para verificar qnt de posts do usuário
+    def qtd_posts(self):
+        busca = sa.select(sa.func.count()).select_from(
+            self.posts.select().subquery())
+        return db.session.scalar(busca)
+    
+    # Função para converter os dados em um dicionario
+    def to_dict(self, include_email=False):
+        data = {
+            'id': self.id,
+            'username': self.username,
+            'visto_ultimo': self.visto_ultimo.replace(
+                tzinfo=timezone.utc).isoformat() if self.visto_ultimo else None,
+            'sobre_mim': self.sobre_mim,
+            'qtd_posts': self.qtd_posts(),
+            'quantidade_seguidores': self.quantidade_seguidores(),
+            'quantidade_seguindo': self.quantidade_seguindo(),
+            '_links': {
+                'self': url_for('api.get_user', id=self.id),
+                'seguidores': url_for('api.get_seguidores', id=self.id),
+                'seguindo': url_for('api.get_seguindo', id=self.id),
+                'avatar': self.avatar(128)
+            }
+        }
+
+        # Se incluir email for TRUE, incluo o email em data
+        if include_email:
+            data['email'] = self.email
+
+        # Retorno os dados
+        return data
+    
+    # Fução para converter de dicionário para objeto
+    def from_dict(self, data, new_user=False):
+        # Para cada campo em username, email e sobre mim
+        for field in ['username', 'email', 'sobre_mim']:
+            # Se o campo estiver presente no dicionário
+            if field in data:
+                setattr(self, field, data[field])
+        # Se o novo usuário estiver a ser criado
+        if new_user and 'senha' in data:
+            self.set_senha(data['senha'])
+
+    
 
 # Classe para posts
 class Post(db.Model):
@@ -203,5 +297,6 @@ class Notificacao(db.Model):
 
     def get_data(self):
         return json.loads(str(self.payload_json))
+
 
 
