@@ -4,6 +4,7 @@ from wtforms.validators import DataRequired, ValidationError, Length
 import sqlalchemy as sa
 from app import db
 from app.models import User
+from flask import request
 
         
 # Formulário de edição de dados
@@ -40,3 +41,14 @@ class PostForm(FlaskForm):
 class MensagemForm(FlaskForm):
     mensagem = TextAreaField('Mensagem', validators=[DataRequired(), Length(min=0, max=140)])
     btn_submit = SubmitField('Enviar')
+
+# Formulário para pesquisa
+class SearchForm(FlaskForm):
+    q = StringField('Procurar', validators=[DataRequired()])
+
+    def __init__(self, *args, **kwargs):
+        if 'formdata' not in kwargs:
+            kwargs['formdata'] = request.args
+        if 'meta' not in kwargs:
+            kwargs['meta'] = {'csrf': False}
+        super(SearchForm, self).__init__(*args, **kwargs)

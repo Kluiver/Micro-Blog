@@ -20,7 +20,10 @@ class Config:
     ADMINS = ['your-email@example.com']
 
     # Paginação dos posts
-    POSTS_PER_PAGE = 1
+    POSTS_PER_PAGE = 5
+
+    # Elasticsearch
+    ELASTICSEARCH_URL = os.environ.get('ELASTICSEARCH_URL')
 
 
     

@@ -8,6 +8,7 @@ from flask_login import LoginManager
 from flask_mail import Mail
 from flask_moment import Moment
 from config import Config
+from elasticsearch import Elasticsearch
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -33,6 +34,10 @@ def criar_app(config_class=Config):
     
     # Configurando Moment
     moment.init_app(app)
+
+    # Configurando o elasticsearch
+    app.elasticsearch = Elasticsearch([app.config['ELASTICSEARCH_URL']]) \
+        if app.config['ELASTICSEARCH_URL'] else None
 
     # configurando as blueprints
     from app.errors import bp as errors_bp

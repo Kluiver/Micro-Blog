@@ -1,12 +1,13 @@
 from app import db
 from flask import render_template, redirect, flash, url_for, request, current_app
-from app.main.forms import EditarPerfilForm, VazioForm, PostForm, MensagemForm
+from app.main.forms import EditarPerfilForm, VazioForm, PostForm, MensagemForm, SearchForm
 from flask_login import current_user, login_required
 from app.models import User, Post, Mensagem, Notificacao
 import sqlalchemy as sa
 from datetime import datetime, timezone
 from app.main import bp
-from flask import current_app
+from flask import current_app, g
+
 
 
 @bp.route('/', methods=['GET', 'POST'])
@@ -66,11 +67,12 @@ def perfil(username):
     return render_template('perfil.html', user=user, posts=posts.items, form=form, proxima_url=proxima_url, anterior_url=anterior_url)
 
 # Função para pegar a ultima vez que o usuário ficou online
-@bp.before_request
+@bp.before_app_request
 def before_request():
     if current_user.is_authenticated:
-        current_user.visto_ultimo = datetime.now(timezone.utc)
+        current_user.last_seen = datetime.now(timezone.utc) 
         db.session.commit()
+        g.search_form = SearchForm()
     
 # Rota para editar o perfil do usuário
 
@@ -210,3 +212,20 @@ def notificacoes():
         'data': n.get_data(),
         'tempo': n.tempo
     } for n in notificacoes]
+
+
+# Rota para as pesquisas
+@bp.route('/search')
+@login_required
+def search():
+    if not g.search_form.validate():
+        return redirect(url_for('main.explore'))
+    page = request.args.get('page', 1, type=int)
+    posts, total = Post.search(g.search_form.q.data, page,
+                               current_app.config['POSTS_PER_PAGE'])
+    proxima_url = url_for('main.search', q=g.search_form.q.data, page=page + 1) \
+        if total > page * current_app.config['POSTS_PER_PAGE'] else None
+    anterior_url = url_for('main.search', q=g.search_form.q.data, page=page - 1) \
+        if page > 1 else None
+    return render_template('search.html', titulo='Pesquisa', posts=posts,
+                           proxima_url=proxima_url, anterior_url=anterior_url)
